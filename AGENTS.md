@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- The heart disease model is trained offline by `scripts/train_heart_model.py` (numpy logistic regression on `scripts/cleveland.data`) and shipped as weights in `src/lib/heart-model.json`; predictions run in the browser via `src/lib/heart-model.ts`. Why: no server or ML runtime needed, and retraining is one script run.

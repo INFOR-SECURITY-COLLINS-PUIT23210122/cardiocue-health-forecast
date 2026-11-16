@@ -1,0 +1,123 @@
+{
+  "dataset": "UCI Cleveland Heart Disease",
+  "samples": 303,
+  "positives": 139,
+  "metrics": {
+    "accuracy": 0.8385,
+    "auc": 0.8996,
+    "sensitivity": 0.7741,
+    "specificity": 0.899,
+    "folds": 5
+  },
+  "intercept": -0.082169,
+  "features": [
+    {
+      "name": "age",
+      "mean": 54.438944,
+      "std": 9.023735,
+      "weight": -0.117908
+    },
+    {
+      "name": "trestbps",
+      "mean": 131.689769,
+      "std": 17.570681,
+      "weight": 0.398382
+    },
+    {
+      "name": "chol",
+      "mean": 246.693069,
+      "std": 51.691406,
+      "weight": 0.217677
+    },
+    {
+      "name": "thalach",
+      "mean": 149.607261,
+      "std": 22.837225,
+      "weight": -0.376998
+    },
+    {
+      "name": "oldpeak",
+      "mean": 1.039604,
+      "std": 1.159157,
+      "weight": 0.415776
+    },
+    {
+      "name": "ca",
+      "mean": 0.663366,
+      "std": 0.932832,
+      "weight": 1.152656
+    },
+    {
+      "name": "sex_male",
+      "mean": 0.679868,
+      "std": 0.466527,
+      "weight": 0.69596
+    },
+    {
+      "name": "fbs_high",
+      "mean": 0.148515,
+      "std": 0.35561,
+      "weight": -0.129982
+    },
+    {
+      "name": "exang",
+      "mean": 0.326733,
+      "std": 0.469019,
+      "weight": 0.360962
+    },
+    {
+      "name": "cp_atypical",
+      "mean": 0.165017,
+      "std": 0.371195,
+      "weight": 0.36545
+    },
+    {
+      "name": "cp_nonanginal",
+      "mean": 0.283828,
+      "std": 0.450855,
+      "weight": 0.053998
+    },
+    {
+      "name": "cp_asymptomatic",
+      "mean": 0.475248,
+      "std": 0.499387,
+      "weight": 0.992889
+    },
+    {
+      "name": "restecg_stt",
+      "mean": 0.013201,
+      "std": 0.114136,
+      "weight": 0.091183
+    },
+    {
+      "name": "restecg_lvh",
+      "mean": 0.488449,
+      "std": 0.499867,
+      "weight": 0.231445
+    },
+    {
+      "name": "slope_flat",
+      "mean": 0.462046,
+      "std": 0.498557,
+      "weight": 0.54439
+    },
+    {
+      "name": "slope_down",
+      "mean": 0.069307,
+      "std": 0.253975,
+      "weight": 0.11414
+    },
+    {
+      "name": "thal_fixed",
+      "mean": 0.059406,
+      "std": 0.236383,
+      "weight": -0.014421
+    },
+    {
+      "name": "thal_reversible",
+      "mean": 0.386139,
+      "std": 0.486863,
+      "weight": 0.630004
+    }
+  ]
+}
