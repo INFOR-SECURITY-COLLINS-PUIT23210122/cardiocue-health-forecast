@@ -20,7 +20,11 @@ export type Database = {
           created_at: string
           id: string
           inputs: Json
+          lab_results: Json | null
+          notes: string | null
           probability: number
+          source: string
+          taken_at: string
           user_id: string
         }
         Insert: {
@@ -28,7 +32,11 @@ export type Database = {
           created_at?: string
           id?: string
           inputs: Json
+          lab_results?: Json | null
+          notes?: string | null
           probability: number
+          source?: string
+          taken_at?: string
           user_id?: string
         }
         Update: {
@@ -36,7 +44,11 @@ export type Database = {
           created_at?: string
           id?: string
           inputs?: Json
+          lab_results?: Json | null
+          notes?: string | null
           probability?: number
+          source?: string
+          taken_at?: string
           user_id?: string
         }
         Relationships: []
