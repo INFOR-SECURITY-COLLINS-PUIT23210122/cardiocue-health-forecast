@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -28,7 +28,7 @@ function FieldShell({ label, hint, aside, children }: FieldShellProps) {
 interface NumberFieldProps {
   label: string;
   hint?: string | undefined;
-  unit?: string;
+  unit?: string | undefined;
   min: number;
   max: number;
   step?: number;
@@ -42,10 +42,7 @@ export function NumberField({ label, hint, unit, min, max, step = 1, value, onCh
       label={label}
       hint={hint}
       aside={
-        <div className="shrink-0 font-mono text-lg text-foreground tabular-nums">
-          {step < 1 ? value.toFixed(1) : value}
-          {unit && <span className="ml-1 text-xs text-muted-foreground">{unit}</span>}
-        </div>
+        <NumberInput label={label} unit={unit} min={min} max={max} step={step} value={value} onChange={onChange} />
       }
     >
       <Slider
@@ -118,5 +115,41 @@ export function Section({ index, title, children }: { index: string; title: stri
       </div>
       <div className="divide-y divide-border">{children}</div>
     </section>
+  );
+}
+
+function NumberInput({ label, unit, min, max, step = 1, value, onChange }: Omit<NumberFieldProps, "hint">) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(step < 1 ? value.toFixed(1) : String(value)), [value, step]);
+  const commit = () => {
+    const n = Number(text);
+    if (text.trim() === "" || Number.isNaN(n)) {
+      setText(String(value));
+      return;
+    }
+    const clamped = Math.min(max, Math.max(min, n));
+    onChange(step < 1 ? Math.round(clamped * 10) / 10 : Math.round(clamped));
+  };
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <input
+        type="number"
+        inputMode="decimal"
+        aria-label={`${label} value`}
+        min={min}
+        max={max}
+        step={step}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          const n = Number(e.target.value);
+          if (e.target.value !== "" && !Number.isNaN(n) && n >= min && n <= max) onChange(n);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && commit()}
+        className="w-20 rounded-md border border-input bg-background px-2 py-1 text-right font-mono text-base text-foreground tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      {unit && <span className="w-10 text-xs text-muted-foreground">{unit}</span>}
+    </div>
   );
 }
