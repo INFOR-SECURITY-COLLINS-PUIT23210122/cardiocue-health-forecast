@@ -14,7 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      risk_checks: {
+        Row: {
+          band: string
+          created_at: string
+          id: string
+          inputs: Json
+          probability: number
+          user_id: string
+        }
+        Insert: {
+          band: string
+          created_at?: string
+          id?: string
+          inputs: Json
+          probability: number
+          user_id?: string
+        }
+        Update: {
+          band?: string
+          created_at?: string
+          id?: string
+          inputs?: Json
+          probability?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

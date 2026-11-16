@@ -1,6 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Heart, RotateCcw } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { BookmarkPlus, RotateCcw } from "lucide-react";
+import { SiteHeader } from "@/components/site-header";
+import { useAuth } from "@/hooks/use-auth";
+import { saveRiskCheck } from "@/lib/risk-checks.functions";
+import { stashPendingCheck, takePendingCheck } from "@/lib/pending-check";
 import { Button } from "@/components/ui/button";
 import { BoolField, ChoiceField, NumberField, Section } from "@/components/heart/fields";
 import { ResultPanel } from "@/components/heart/result-panel";
@@ -35,28 +42,52 @@ function Index() {
   const set = <K extends keyof PatientInput>(k: K) => (v: PatientInput[K]) =>
     setInput((s) => ({ ...s, [k]: v }));
   const m = MODEL_INFO.metrics;
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const save = useServerFn(saveRiskCheck);
+
+  // Bring back measurements entered before signing in.
+  useEffect(() => {
+    const pending = takePendingCheck();
+    if (pending) setInput(pending);
+  }, []);
+
+  const saving = useMutation({
+    mutationFn: () => save({ data: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["risk-checks"] });
+      toast.success("Check saved to your history", {
+        action: { label: "View", onClick: () => navigate({ to: "/history" }) },
+      });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSave = () => {
+    if (user) {
+      saving.mutate();
+      return;
+    }
+    stashPendingCheck(input);
+    navigate({ to: "/auth", search: { redirect: "/" } });
+  };
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-card/70 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Heart className="heartbeat size-5 fill-primary text-primary" />
-            <span className="font-serif text-xl text-foreground">Pulse</span>
-          </div>
-          <div className="hidden gap-6 font-mono text-xs text-muted-foreground sm:flex">
-            <span>
-              accuracy <span className="text-foreground">{pct(m.accuracy)}</span>
-            </span>
-            <span>
-              AUC <span className="text-foreground">{m.auc.toFixed(2)}</span>
-            </span>
-            <span>
-              n=<span className="text-foreground">{MODEL_INFO.samples}</span>
-            </span>
-          </div>
+      <SiteHeader>
+        <div className="hidden gap-6 font-mono text-xs text-muted-foreground md:flex">
+          <span>
+            accuracy <span className="text-foreground">{pct(m.accuracy)}</span>
+          </span>
+          <span>
+            AUC <span className="text-foreground">{m.auc.toFixed(2)}</span>
+          </span>
+          <span>
+            n=<span className="text-foreground">{MODEL_INFO.samples}</span>
+          </span>
         </div>
-      </header>
+      </SiteHeader>
 
       <section className="mx-auto max-w-6xl px-6 pb-10 pt-14">
         <div className="grid items-end gap-8 md:grid-cols-[1.4fr_1fr]">
@@ -213,6 +244,18 @@ function Index() {
 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <ResultPanel prediction={prediction} />
+          <Button className="h-11 w-full" disabled={saving.isPending} onClick={handleSave}>
+            <BookmarkPlus />
+            {user ? (saving.isPending ? "Saving…" : "Save this check") : "Sign in to save this check"}
+          </Button>
+          {user && (
+            <p className="-mt-2 text-center text-xs text-muted-foreground">
+              See trends and an AI summary in{" "}
+              <Link to="/history" className="text-primary underline-offset-4 hover:underline">
+                My history
+              </Link>
+            </p>
+          )}
           <Button variant="outline" className="w-full" onClick={() => setInput(DEFAULT_INPUT)}>
             <RotateCcw /> Reset to sample patient
           </Button>

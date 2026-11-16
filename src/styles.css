@@ -73,6 +73,9 @@
   --color-risk-low: var(--risk-low);
   --color-risk-moderate: var(--risk-moderate);
   --color-risk-high: var(--risk-high);
+  --color-google: var(--google);
+  --color-google-border: var(--google-border);
+  --color-google-foreground: var(--google-foreground);
   --font-serif: "Fraunces", ui-serif, Georgia, serif;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -102,6 +105,10 @@
   --risk-low: oklch(0.58 0.1 160);
   --risk-moderate: oklch(0.72 0.15 65);
   --risk-high: oklch(0.52 0.19 25);
+  /* Google sign-in button: brand-mandated light theme (#FFFFFF / #747775 / #1F1F1F) */
+  --google: oklch(1 0 0);
+  --google-border: oklch(0.56 0.005 160);
+  --google-foreground: oklch(0.24 0 0);
   --chart-1: oklch(0.52 0.19 25);
   --chart-2: oklch(0.58 0.1 160);
   --chart-3: oklch(0.72 0.15 65);

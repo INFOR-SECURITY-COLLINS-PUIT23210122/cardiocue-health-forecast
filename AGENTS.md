@@ -32,3 +32,5 @@ use the editor.
 ## Project rules
 
 - The heart disease model is trained offline by `scripts/train_heart_model.py` (numpy logistic regression on `scripts/cleveland.data`) and shipped as weights in `src/lib/heart-model.json`; predictions run in the browser via `src/lib/heart-model.ts`. Why: no server or ML runtime needed, and retraining is one script run.
+- Saved risk checks: the server recomputes probability/band with `predict()` on save (never trusts client values) and stores raw inputs as JSON so history can be re-described. Why: saved results always match the shipped model.
+- AI history summaries run server-side only (`src/lib/history-summary.server.ts`, dynamically imported inside the server function) and return strict JSON validated with zod. Why: keeps the gateway key off the client and the UI renders structured fields, not free text.
