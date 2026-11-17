@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Heart, History, LogOut } from "lucide-react";
+import { ClipboardPlus, Heart, History, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,11 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
           {!loading &&
             (user ? (
               <nav className="flex items-center gap-1">
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/log">
+                    <ClipboardPlus /> <span className="hidden sm:inline">Log results</span>
+                  </Link>
+                </Button>
                 <Button asChild variant="ghost" size="sm">
                   <Link to="/history">
                     <History /> My history

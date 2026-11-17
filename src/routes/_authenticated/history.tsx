@@ -1,13 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ClipboardPlus, Minus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
 import { HistoryChart } from "@/components/heart/history-chart";
 import { deleteRiskCheck, listRiskChecks, summarizeRiskHistory } from "@/lib/risk-checks.functions";
-import { formatPoints, pointsChange, type HistoryChange, type SavedCheck } from "@/lib/risk-history";
+import {
+  enteredTestValues,
+  formatEntryDate,
+  formatPoints,
+  pointsChange,
+  SOURCE_LABEL,
+  type HistoryChange,
+  type SavedCheck,
+} from "@/lib/risk-history";
 import { cn } from "@/lib/utils";
 
 const historyQuery = queryOptions({ queryKey: ["risk-checks"], queryFn: () => listRiskChecks() });
@@ -30,9 +39,6 @@ export const Route = createFileRoute("/_authenticated/history")({
 const BAND_TEXT = { low: "text-risk-low", moderate: "text-risk-moderate", high: "text-risk-high" } as const;
 const BAND_BG = { low: "bg-risk-low", moderate: "bg-risk-moderate", high: "bg-risk-high" } as const;
 
-const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
-
 function HistoryPage() {
   const { data: checks } = useSuspenseQuery(historyQuery);
   const queryClient = useQueryClient();
@@ -44,7 +50,7 @@ function HistoryPage() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["risk-checks"] });
-      toast.success("Check deleted");
+      toast.success("Entry deleted");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -57,16 +63,36 @@ function HistoryPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6 py-12">
-        <p className="font-mono text-xs uppercase tracking-widest text-primary">Saved checks · {checks.length}</p>
-        <h1 className="mt-3 font-serif text-5xl text-foreground">Your risk history</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-widest text-primary">Saved entries · {checks.length}</p>
+            <h1 className="mt-3 font-serif text-5xl text-foreground">Your risk history</h1>
+          </div>
+          {checks.length > 0 && (
+            <Button asChild variant="outline">
+              <Link to="/log">
+                <ClipboardPlus /> Log test results
+              </Link>
+            </Button>
+          )}
+        </div>
 
         {checks.length === 0 ? (
           <div className="mt-10 rounded-lg border border-dashed border-border bg-card p-10 text-center">
             <p className="font-serif text-2xl text-foreground">No saved checks yet</p>
-            <p className="mt-2 text-muted-foreground">Enter your measurements and save a check to start tracking.</p>
-            <Button asChild className="mt-6">
-              <Link to="/">Take a risk check</Link>
-            </Button>
+            <p className="mt-2 text-muted-foreground">
+              Save a risk check, or log real results from a check-up or lab report, to start tracking.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button asChild>
+                <Link to="/">Take a risk check</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/log">
+                  <ClipboardPlus /> Log test results
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_400px]">
@@ -96,7 +122,7 @@ function HistoryPage() {
 
               <section className="rounded-lg border border-border bg-card">
                 <div className="border-b border-border px-6 py-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                  All checks
+                  All entries · newest first
                 </div>
                 <ul className="divide-y divide-border">
                   {[...checks].reverse().map((c, i, arr) => (
@@ -122,7 +148,7 @@ function HistoryPage() {
                   <SummaryView summary={summary.data.summary} checkCount={summary.data.checkCount} />
                 ) : (
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Get a plain-language summary of your saved checks and the changes that matter most.
+                    Get a plain-language summary of your saved checks and test results, and the changes that matter most.
                   </p>
                 )}
 
@@ -164,26 +190,53 @@ function CheckRow({
   onDelete: () => void;
 }) {
   const delta = previous ? pointsChange(previous.probability, check.probability) : null;
-  const i = check.inputs;
+  const isTest = check.source === "test_results";
   return (
-    <li className="flex flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
-      <div className="w-16 font-serif text-2xl text-foreground tabular-nums">{Math.round(check.probability * 100)}%</div>
+    <li className="flex flex-wrap items-start gap-x-6 gap-y-2 px-6 py-4">
+      <div className="w-16 pt-0.5 font-serif text-2xl text-foreground tabular-nums">{Math.round(check.probability * 100)}%</div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge
+            variant={isTest ? "default" : "outline"}
+            className="font-mono text-[10px] uppercase tracking-wider"
+          >
+            {SOURCE_LABEL[check.source]}
+          </Badge>
           <span className={cn("size-2 rounded-full", BAND_BG[check.band])} />
           <span className={cn("font-medium capitalize", BAND_TEXT[check.band])}>{check.band}</span>
-          <span className="text-muted-foreground">· {fmtDateTime(check.createdAt)}</span>
+          <span className="text-muted-foreground">· {isTest ? "Tested " : ""}{formatEntryDate(check)}</span>
         </div>
-        <div className="mt-1 font-mono text-xs text-muted-foreground">
-          BP {i.restingBP} · Chol {i.cholesterol} · Max HR {i.maxHeartRate} · ST {i.stDepression.toFixed(1)}
-        </div>
+        {check.source === "checker" ? (
+          <div className="mt-1.5 font-mono text-xs text-muted-foreground">
+            BP {check.inputs.restingBP} · Chol {check.inputs.cholesterol} · Max HR {check.inputs.maxHeartRate} · ST{" "}
+            {check.inputs.stDepression.toFixed(1)}
+          </div>
+        ) : (
+          <>
+            <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Test results">
+              {enteredTestValues(check.results).map((v) => (
+                <li key={v.key} title={v.label} className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+                  <span className="text-muted-foreground">{v.short}</span> {v.value}
+                </li>
+              ))}
+            </ul>
+            {check.notes && (
+              <p className="mt-2 whitespace-pre-line border-l-2 border-border pl-2 text-xs italic text-muted-foreground">{check.notes}</p>
+            )}
+            {check.estimated.length > 0 && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Estimate uses the study average for {check.estimated.length} untested measurement{check.estimated.length === 1 ? "" : "s"}.
+              </p>
+            )}
+          </>
+        )}
       </div>
       {delta !== null && (
-        <div className={cn("font-mono text-xs", delta > 0 ? "text-risk-high" : delta < 0 ? "text-risk-low" : "text-muted-foreground")}>
+        <div className={cn("pt-1.5 font-mono text-xs", delta > 0 ? "text-risk-high" : delta < 0 ? "text-risk-low" : "text-muted-foreground")}>
           {formatPoints(delta)}
         </div>
       )}
-      <Button variant="ghost" size="icon" aria-label="Delete check" disabled={deleting} onClick={onDelete}>
+      <Button variant="ghost" size="icon" aria-label="Delete entry" disabled={deleting} onClick={onDelete}>
         <Trash2 />
       </Button>
     </li>

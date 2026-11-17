@@ -1,24 +1,55 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { predict, riskBand } from "@/lib/heart-model";
+import { predict, predictPartial, riskBand } from "@/lib/heart-model";
 import { patientInputSchema } from "@/lib/patient-input-schema";
 import type { HistorySummary, SavedCheck } from "@/lib/risk-history";
+import {
+  missingModelFields,
+  splitEntry,
+  testDateToTimestamp,
+  testResultsEntrySchema,
+  testValuesSchema,
+  toModelInput,
+} from "@/lib/test-results";
 
 const MAX_SUMMARY_CHECKS = 30;
 
-type CheckRow = { id: string; created_at: string; probability: number; inputs: unknown };
+const CHECK_COLUMNS = "id, created_at, taken_at, probability, inputs, source, lab_results, notes";
+
+type CheckRow = {
+  id: string;
+  created_at: string;
+  taken_at: string;
+  probability: number;
+  inputs: unknown;
+  source: string;
+  lab_results: unknown;
+  notes: string | null;
+};
 
 function toSavedCheck(row: CheckRow): SavedCheck | null {
-  const inputs = patientInputSchema.safeParse(row.inputs);
-  if (!inputs.success) return null;
-  return {
+  const base = {
     id: row.id,
     createdAt: row.created_at,
+    takenAt: row.taken_at,
     probability: row.probability,
     band: riskBand(row.probability),
-    inputs: inputs.data,
   };
+  if (row.source === "test_results") {
+    const results = testValuesSchema.safeParse(row.lab_results);
+    if (!results.success) return null;
+    return {
+      ...base,
+      source: "test_results",
+      results: results.data,
+      notes: row.notes,
+      estimated: missingModelFields(toModelInput(results.data)),
+    };
+  }
+  const inputs = patientInputSchema.safeParse(row.inputs);
+  if (!inputs.success) return null;
+  return { ...base, source: "checker", inputs: inputs.data };
 }
 
 export const saveRiskCheck = createServerFn({ method: "POST" })
@@ -39,12 +70,42 @@ export const saveRiskCheck = createServerFn({ method: "POST" })
     return { id: row.id, createdAt: row.created_at };
   });
 
+export const saveTestResults = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => testResultsEntrySchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { values, takenAt, notes } = splitEntry(data);
+    // Recompute on the server; measurements that weren't tested use the study average.
+    const modelInput = toModelInput(values);
+    const result = predictPartial(modelInput);
+    const { data: row, error } = await context.supabase
+      .from("risk_checks")
+      .insert({
+        user_id: context.userId,
+        source: "test_results",
+        taken_at: testDateToTimestamp(takenAt),
+        inputs: modelInput,
+        lab_results: values,
+        notes,
+        probability: result.probability,
+        band: result.band,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("[saveTestResults]", error.message);
+      throw new Error("Could not save these results. Please try again.");
+    }
+    return { id: row.id };
+  });
+
 export const listRiskChecks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SavedCheck[]> => {
     const { data, error } = await context.supabase
       .from("risk_checks")
-      .select("id, created_at, probability, inputs")
+      .select(CHECK_COLUMNS)
+      .order("taken_at", { ascending: true })
       .order("created_at", { ascending: true })
       .limit(500);
     if (error) {
@@ -71,7 +132,8 @@ export const summarizeRiskHistory = createServerFn({ method: "POST" })
     }): Promise<{ summary: HistorySummary; checkCount: number } | { error: string }> => {
       const { data, error } = await context.supabase
         .from("risk_checks")
-        .select("id, created_at, probability, inputs")
+        .select(CHECK_COLUMNS)
+        .order("taken_at", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(MAX_SUMMARY_CHECKS);
       if (error) return { error: "Could not load your history." };

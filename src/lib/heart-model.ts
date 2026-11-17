@@ -111,13 +111,30 @@ export function riskBand(probability: number): RiskBand {
 }
 
 export function predict(input: PatientInput): Prediction {
-  const x = toFeatures(input);
+  return predictPartial(input);
+}
+
+/** Model fields in display order. */
+export const MODEL_FIELDS = Object.keys(FIELD_LABELS) as (keyof PatientInput)[];
+
+export function fieldLabel(field: keyof PatientInput): string {
+  return FIELD_LABELS[field] ?? field;
+}
+
+/**
+ * Predict when some measurements are unknown. Missing measurements are set to the
+ * study average, so they push the estimate neither up nor down.
+ */
+export function predictPartial(input: Partial<PatientInput>): Prediction {
+  const known = (field: keyof PatientInput) => input[field] !== undefined;
+  const x = toFeatures({ ...DEFAULT_INPUT, ...stripUndefined(input) });
   const byField: Record<string, number> = {};
   let logit = model.intercept;
   for (const f of model.features) {
+    const field = FEATURE_FIELD[f.name] ?? (f.name as keyof PatientInput);
+    if (!known(field)) continue;
     const c = (f.weight * ((x[f.name] ?? 0) - f.mean)) / f.std;
     logit += c;
-    const field = FEATURE_FIELD[f.name] ?? f.name;
     byField[field] = (byField[field] ?? 0) + c;
   }
   const probability = 1 / (1 + Math.exp(-logit));
@@ -125,6 +142,10 @@ export function predict(input: PatientInput): Prediction {
     .map(([field, value]) => ({ field, label: FIELD_LABELS[field] ?? field, value }))
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
   return { probability, band: riskBand(probability), contributions };
+}
+
+function stripUndefined(input: Partial<PatientInput>): Partial<PatientInput> {
+  return Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)) as Partial<PatientInput>;
 }
 
 export const DEFAULT_INPUT: PatientInput = {
